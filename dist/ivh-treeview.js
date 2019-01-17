@@ -7,29 +7,6 @@
 
 angular.module('ivh.treeview', []);
 
-
-/**
- * Supports non-default interpolation symbols
- *
- * @package ivh.treeview
- * @copyright 2016 iVantage Health Analytics, Inc.
- */
-
-angular.module('ivh.treeview').constant('ivhTreeviewInterpolateEndSymbol', '}}');
-
-
-
-/**
- * Supports non-default interpolation symbols
- *
- * @package ivh.treeview
- * @copyright 2016 iVantage Health Analytics, Inc.
- */
-
-angular.module('ivh.treeview').constant('ivhTreeviewInterpolateStartSymbol', '{{');
-
-
-
 /**
  * Selection management logic for treeviews with checkboxes
  *
@@ -60,36 +37,35 @@ angular.module('ivh.treeview').directive('ivhTreeviewCheckboxHelper', [function(
 
       // Enforce consistent behavior across browsers by making indeterminate
       // checkboxes become checked when clicked/selected using spacebar
-      scope.resolveIndeterminateClick = function() {
-
-        //intermediate state is not handled when CheckBoxes state propagation is disabled
-        if (opts.disableCheckboxSelectionPropagation) {
-          return;
-        }
-
+      scope.resolveIndeterminateClick = function(node) {
+        node.selectedNotAllOverlaysWithThisCategory = false;
         if(node[indeterminateAttr]) {
-          trvw.select(node, true);
+          // trvw.select(node, true);
         }
       };
 
       // Update the checkbox when the node's selected status changes
       scope.$watch('node.' + selectedAttr, function(newVal, oldVal) {
-        scope.isSelected = newVal;
+        // scope.isSelected = newVal;
       });
 
-      if (!opts.disableCheckboxSelectionPropagation) {
-        // Update the checkbox when the node's indeterminate status changes
-        scope.$watch('node.' + indeterminateAttr, function(newVal, oldVal) {
-          element.find('input').prop('indeterminate', newVal);
-        });
-      }
+      // Update the checkbox when the node's indeterminate status changes
+      scope.$watch('node.' + indeterminateAttr, function(newVal, oldVal) {
+        element.find('input').prop('indeterminate', newVal);
+      });
     },
     template: [
+      '<label',
+        'for="ivh-treeview-checkbox-{{node._id}}"',
+        'class="ivh-treeview-checkbox"',
+        'ng-class="{\'category-selected\': node.selected, \'category-part-selected\': node.selectedNotAllOverlaysWithThisCategory }">',
+      '</label>',
       '<input type="checkbox"',
         'class="ivh-treeview-checkbox"',
         'ng-model="isSelected"',
-        'ng-click="resolveIndeterminateClick()"',
-        'ng-change="trvw.select(node, isSelected)" />'
+        'id="ivh-treeview-checkbox-{{node._id}}"',
+        'ng-click="resolveIndeterminateClick(node)"',
+        ' />'
     ].join('\n')
   };
 }]);
@@ -134,7 +110,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewChildren', function() {
         '<li ng-repeat="child in getChildren()"',
             'ng-hide="trvw.hasFilter() && !trvw.isVisible(child)"',
             'class="ivh-treeview-node"',
-            'ng-class="{\'ivh-treeview-node-collapsed\': !trvw.isExpanded(child) && !trvw.isLeaf(child)}"',
+            'ng-class="{\'ivh-treeview-node-collapsed\': !child.expanded && !trvw.isExpanded(child) && !trvw.isLeaf(child)}"',
             'ivh-treeview-node="child"',
             'ivh-treeview-depth="childDepth">',
         '</li>',
@@ -220,11 +196,64 @@ angular.module('ivh.treeview').directive('ivhTreeviewToggle', [function() {
 
       element.addClass('ivh-treeview-toggle');
 
-      element.bind('click', function() {
+      element.bind('click', function(e) {
+        node.expanded = !node.expanded;
         if(!trvw.isLeaf(node)) {
           scope.$apply(function() {
             trvw.toggleExpanded(node);
-            trvw.onToggle(node);
+            trvw.onToggle(node, e);
+          });
+        }else // CBarnett - Added this to allow leaf nodes to trigger toggle event.
+        {
+            scope.$apply(function() {
+                trvw.onToggle(node, e);
+            });
+        }
+      });
+    }
+  };
+}]);
+
+
+// CBarnett - added new directive to seperate expand toggle from label click
+angular.module('ivh.treeview').directive('ivhTreeviewLabel', [function() {
+  'use strict';
+  return {
+    restrict: 'A',
+    require: '^ivhTreeview',
+    link: function(scope, element, attrs, trvw) {
+      var node = scope.node;
+
+      element.addClass('ivh-treeview-label');
+      if (node.isOverlayTypeCategory) {
+        element.parent().addClass('type_category_filter');
+      }
+
+      element.bind('click', function(el) {
+        if ((el.toElement || el.target).tagName === 'INPUT') return;
+        if (!trvw.isMultiselect()) {
+          var myEl = angular.element(document.getElementsByClassName('selected-category'));
+          if (myEl) {
+            myEl.removeClass('selected-category');
+          }
+        }
+
+        node.isSelected = !node.isSelected;
+        node.selected = !node.selected;
+        node.selectedNotAllOverlaysWithThisCategory = false;
+        if (el.toElement) {
+          el.toElement.classList.add('selected-category');
+        } else if (el.target) {
+          el.target.classList.add('selected-category');
+        }
+        if (!trvw.isLeaf(node)) {
+          scope.$apply(function() {
+            // trvw.toggleExpanded(node);
+            trvw.onToggle(node, el);
+          });
+        } else { // CBarnett - Added this to allow leaf nodes to trigger toggle event.
+          scope.$apply(function() {
+            trvw.onToggle(node, el);
           });
         }
       });
@@ -232,6 +261,213 @@ angular.module('ivh.treeview').directive('ivhTreeviewToggle', [function() {
   };
 }]);
 
+// CBarnett - added new directive to seperate expand toggle from label click
+angular.module('ivh.treeview').directive('ivhTreeviewMenu', [function() {
+  'use strict';
+  return {
+    restrict: 'A',
+    require: '^ivhTreeview',
+    link: function(scope, element, attrs, trvw) {
+      var node = scope.node;
+
+      element.addClass('ivh-treeview-menu');
+
+      element.bind('click', function(el) {
+      //  console.log('category item menu click',el,node);
+        scope.$apply(function() {
+          trvw.onMenu(node);
+        });
+      });
+    }
+  };
+}]);
+
+/**
+ * Set directives for actions, instead using global functions
+ */
+angular.module('ivh.treeview').directive('ivhTreeviewRemove', ['$http','$rootScope', '$mdDialog','$timeout', function($http, $rootScope, $mdDialog, $timeout) {
+  'use strict';
+  return {
+    restrict: 'A',
+    require: '^ivhTreeview',
+    link: function(scope, element, attrs, trvw) {
+      var node = scope.node;
+
+        element.bind('click', function () {
+            node = scope.node;
+            var title = 'Are you sure you want to delete the "' + node.label + '" category?';
+            var textContent = 'All overlays currently assigned to this category will unassigned';
+                
+            var confirm = $mdDialog.confirm({
+                    onShowing: function afterShowAnimation(el) {
+                            $timeout(function () {
+                                var $dialog = angular.element(document.querySelector('md-dialog'));
+                                var $actionsSection = $dialog.find('md-dialog-actions');
+                                var $cancelButton = $actionsSection.children()[0];
+                                var $confirmButton = $actionsSection.children()[1];
+                                angular.element($dialog).addClass('confirm_delete_category_dialog');
+                                angular.element($confirmButton).addClass('confirm_category_btn');
+                                angular.element($cancelButton).addClass('cancel_category_btn');
+                                angular.element($actionsSection).addClass('grey_confirm_background');
+                                angular.element($dialog).css({display: "flex"});
+                                el.dialog.$element.css({display: "flex"});
+                                if(angular.element(document.querySelector('.confirm_delete_category_dialog p')).text() == ''){
+                                    angular.element(document.querySelector('.confirm_delete_category_dialog p')).text(textContent);
+                                }
+                            });
+                        }
+                    })
+                    .title(title)
+                    .textContent(textContent)
+                    .ariaLabel(title)
+                    .ok('Delete Category')
+                    .cancel('Cancel');
+
+            $mdDialog.show(confirm).then(function () {
+              $http.delete('/api/overlaycategories/' + node._id).then(successCallback, errorCallback);
+                function successCallback(data) {
+                    $rootScope.updateCategory(true);
+                }
+
+                function errorCallback(data) {
+                   // console.log(data);
+                }
+
+            }, function () {
+               // console.log('Cancel Delete Selected');
+
+            });
+
+            //  console.log('category item menu click',el,node);
+            scope.$apply(function () {
+                trvw.onMenu(node);
+            });
+        });
+    }
+  };
+}]);
+
+angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compile', '$rootScope', function($http, $compile, $rootScope) {
+  'use strict';
+  return {
+    restrict: 'A',
+    require: '^ivhTreeview',
+    link: function(scope, element, attrs, trvw) {
+      var node = scope.node;
+      
+      var template =  '<form id="renameForm" style="margin-left: 20px;" ng-submit="rename()">'+
+          '<input type="text" placeholder=" Enter Category Name" ng-model="categoryUpdate" class="enter-category-name"/>'+
+          '<p style="margin-left: 0px;" class="new_category_comment">'+
+              'Press enter to add the category'+
+          '</p>'+
+        '</form>';
+
+        scope.rename = function(){
+            node = scope.node;
+            
+            var renamedValue;
+
+            if (!node._id) {
+                node = scope.$parent.$parent.$parent.$parent.node;
+                var childrenNode = scope.$parent.node;
+                var id = searchIndexOfObjInArr(node.children, childrenNode.label);
+                renamedValue = node.children[id].label;
+                node.children[id].label = scope.categoryUpdate;
+            } else {
+                renamedValue = node.label;
+                node.label = scope.categoryUpdate;
+            }
+            
+            node.renamedValue = renamedValue;
+
+            $http.put('/api/overlaycategories/' + node._id, node).then(successCallback, errorCallback);
+
+            function successCallback(data) {
+                $rootScope.updateCategory(true);
+            }
+
+            function errorCallback(data) {
+                //console.log(data);
+            }
+        };
+
+        element.bind('click', function () {
+            scope.categoryUpdate = node.label;
+            var id = CSS.escape(node.label.replace(' ', '-'));
+            angular.element(angular.element(document.querySelector('.library_categories  #tree_node_'+id))[0].parentElement).children().css({
+                display: "none"
+            });
+            angular.element(document.querySelector('.library_categories #tree_node_'+id)).after($compile(template)(scope));
+
+            scope.$apply(function () {
+                trvw.onMenu(node);
+            });
+        });
+    }
+  };
+}]);
+
+function searchIndexOfObjInArr(arr, label){
+    if(!arr || arr.length == 0){
+        return -1;
+    }
+    for(var i = 0; i < arr.length; i++){
+        if(arr[i].label == label){
+            return i;
+        }
+    }
+}
+
+angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', '$compile', '$rootScope', function($http, $compile, $rootScope) {
+  'use strict';
+  return {
+    restrict: 'A',
+    require: '^ivhTreeview',
+    link: function(scope, element, attrs, trvw) {
+      var node = scope.node;
+
+        scope.addSubcategory = function() {
+            if (typeof scope.subCategory != 'undefined') {
+                var newCategory = {
+                  parents: [node.label],
+                  label: scope.subCategory
+                };
+                $http.post('/api/overlaycategories/', newCategory)
+                .then(function successCallback() {
+                  $rootScope.updateCategory();
+                }, function errorCallback() {
+                  document.getElementById('addSubcategoryForm').remove();
+                }); 
+            }
+        };
+        
+        var id;
+
+        element.bind('click', function () {
+            if (!document.getElementById('addSubcategoryForm')) {
+                var marginLeft = (node.children && node.children.length) > 0 ? -20 : 0;
+                var template = '<form id="addSubcategoryForm" style="margin-left: ' + marginLeft + 'px; margin-top: 10px;" ng-submit="addSubcategory()">' +
+                        '<input type="text" placeholder=" Enter Category Name" ng-model="subCategory" class="enter-category-name"/>' +
+                        '<p style="margin-left: 0px;" class="new_category_comment">' +
+                        'Press enter to add the category' +
+                        '</p>' +
+                        '</form>';
+
+                scope.categoryUpdate = node.label;
+                id = CSS.escape(node.label.replace(' ', '-'));
+                var el = angular.element(angular.element(document.querySelector('.library_categories #tree_node_' + id).parentElement).find('div'));
+
+                angular.element(el[el.length - 1]).append($compile(template)(scope));
+
+                //  console.log('category item menu click',el,node);
+                scope.$apply(function () {
+                    trvw.onMenu(node);
+                });
+            }
+        });
+    }
+  };
+}]);
 
 /**
  * Treeview twistie directive
@@ -336,7 +572,6 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
       // Specific config options
       childrenAttribute: '=ivhTreeviewChildrenAttribute',
       defaultSelectedState: '=ivhTreeviewDefaultSelectedState',
-      disableCheckboxSelectionPropagation: '=ivhTreeviewDisableCheckboxSelectionPropagation',
       expandToDepth: '=ivhTreeviewExpandToDepth',
       idAttribute: '=ivhTreeviewIdAttribute',
       indeterminateAttribute: '=ivhTreeviewIndeterminateAttribute',
@@ -346,12 +581,15 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
       selectedAttribute: '=ivhTreeviewSelectedAttribute',
       onCbChange: '&ivhTreeviewOnCbChange',
       onToggle: '&ivhTreeviewOnToggle',
+      onMenu: '&ivhTreeviewOnMenu',
       twistieCollapsedTpl: '=ivhTreeviewTwistieCollapsedTpl',
       twistieExpandedTpl: '=ivhTreeviewTwistieExpandedTpl',
       twistieLeafTpl: '=ivhTreeviewTwistieLeafTpl',
       useCheckboxes: '=ivhTreeviewUseCheckboxes',
+      hideNodeCount: '=hideNodeCount',
       validate: '=ivhTreeviewValidate',
       visibleAttribute: '=ivhTreeviewVisibleAttribute',
+      isMultiselect: '=ivhTreeviewMultiselect',
 
       // Generic options object
       userOptions: '=ivhTreeviewOptions',
@@ -373,7 +611,6 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
       ng.forEach([
         'childrenAttribute',
         'defaultSelectedState',
-        'disableCheckboxSelectionPropagation',
         'expandToDepth',
         'idAttribute',
         'indeterminateAttribute',
@@ -385,8 +622,10 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
         'twistieExpandedTpl',
         'twistieLeafTpl',
         'useCheckboxes',
+        'hideNodeCount',
         'validate',
-        'visibleAttribute'
+        'visibleAttribute',
+        'isMultiselect'
       ], function(attr) {
         if(ng.isDefined($scope[attr])) {
           localOpts[attr] = $scope[attr];
@@ -404,7 +643,8 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
 
       ng.forEach([
         'onCbChange',
-        'onToggle'
+        'onToggle',
+        'onMenu'
       ], function(attr) {
         if($attrs[normedAttr(attr)]) {
           localOpts[attr] = $scope[attr];
@@ -476,6 +716,27 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
        */
       trvw.label = function(node) {
         return node[localOpts.labelAttribute];
+      };
+
+      trvw.count = function(node) {
+        if (!node || !node.count || trvw.hideNodeCount()) {
+          return;
+        }
+
+        var count = node && node.count ? node.count.length : 0;
+        var str = '(' + count + ')';
+        return str;
+      };
+
+      trvw.getClass = function(node) {
+        var elementClass = '';
+        if (node.selected || node.selectedNotAllOverlaysWithThisCategory) {
+          elementClass += ' selected-category';
+        }
+        if (node.class) {
+          elementClass += ' ' + node.class;
+        }
+        return elementClass;
       };
 
       /**
@@ -553,6 +814,24 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
        */
       trvw.useCheckboxes = function() {
         return localOpts.useCheckboxes;
+      };
+
+      /**
+       * Returns `true` if we should use checkboxes, false otherwise
+       *
+       * @return {Boolean} Whether or not to use checkboxes
+       */
+      trvw.hideNodeCount = function() {
+        return localOpts.hideNodeCount;
+      };
+
+      /**
+       * Returns `true` if we should select multiple categories, false otherwise
+       *
+       * @return {Boolean} Whether or not to select multiple categories
+       */
+      trvw.isMultiselect = function() {
+        return localOpts.isMultiselect;
       };
 
       /**
@@ -677,14 +956,34 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
        * @param {Object} node Tree node to pass to the handler
        * @private
        */
-      trvw.onToggle = function(node) {
-        if(localOpts.onToggle) {
+      trvw.onToggle = function(node, event) {
+        var element = event.toElement || event.target;
+        if(localOpts.onToggle && !element.classList.contains('glyphicon')) {
           var locals = {
             ivhNode: node,
             ivhIsExpanded: trvw.isExpanded(node),
             ivhTree: $scope.root
           };
           localOpts.onToggle(locals);
+        }
+      };
+
+      /**
+       * Call the registered toggle handler
+       *
+       * Handler will get a reference to `node` and the root of the tree.
+       *
+       * @param {Object} node Tree node to pass to the handler
+       * @private
+       */
+      trvw.onMenu = function(node) {
+        if(localOpts.onMenu) {
+          var locals = {
+            ivhNode: node,
+            ivhIsExpanded: trvw.isExpanded(node),
+            ivhTree: $scope.root
+          };
+          localOpts.onMenu(locals);
         }
       };
 
@@ -708,6 +1007,7 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
           localOpts.onCbChange(locals);
         }
       };
+
     }],
     link: function(scope, element, attrs) {
       var opts = scope.trvw.opts();
@@ -722,7 +1022,7 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
         '<li ng-repeat="child in root | ivhTreeviewAsArray"',
             'ng-hide="trvw.hasFilter() && !trvw.isVisible(child)"',
             'class="ivh-treeview-node"',
-            'ng-class="{\'ivh-treeview-node-collapsed\': !trvw.isExpanded(child) && !trvw.isLeaf(child)}"',
+            'ng-class="{\'ivh-treeview-node-collapsed\': !child.expanded && !trvw.isExpanded(child) && !trvw.isLeaf(child)}"',
             'ivh-treeview-node="child"',
             'ivh-treeview-depth="0">',
         '</li>',
@@ -896,35 +1196,32 @@ angular.module('ivh.treeview')
     };
 
     var validateParent = function(node) {
-      var children = node[this.childrenAttribute]
-        , selectedAttr = this.selectedAttribute
-        , indeterminateAttr = this.indeterminateAttribute
-        , numSelected = 0
-        , numIndeterminate = 0;
-      ng.forEach(children, function(n, ix) {
-        if(n[selectedAttr]) {
-          numSelected++;
-        } else {
-          if(n[indeterminateAttr]) {
-            numIndeterminate++;
-          }
-        }
-      });
-
-      if(0 === numSelected && 0 === numIndeterminate) {
-        node[selectedAttr] = false;
-        node[indeterminateAttr] = false;
-      } else if(numSelected === children.length) {
-        node[selectedAttr] = true;
-        node[indeterminateAttr] = false;
-      } else {
-        node[selectedAttr] = false;
-        node[indeterminateAttr] = true;
-      }
-    };
-
-    var isId = function(val) {
-      return ng.isString(val) || ng.isNumber(val);
+//      var children = node[this.childrenAttribute]
+//        , selectedAttr = this.selectedAttribute
+//        , indeterminateAttr = this.indeterminateAttribute
+//        , numSelected = 0
+//        , numIndeterminate = 0;
+//      ng.forEach(children, function(n, ix) {
+//        if(n[selectedAttr]) {
+//          numSelected++;
+//        } else {
+//          if(n[indeterminateAttr]) {
+//            numIndeterminate++;
+//          }
+//        }
+//      });
+//      
+      //Fixed aoutoselecting and uselecting of parent category
+//      if(0 === numSelected && 0 === numIndeterminate) {
+//        node[selectedAttr] = false;
+//        node[indeterminateAttr] = false;
+//      } else if(numSelected === children.length) {
+//        node[selectedAttr] = true;
+//        node[indeterminateAttr] = false;
+//      } else {
+//        node[selectedAttr] = false;
+//        node[indeterminateAttr] = true;
+//      }
     };
 
     var findNode = function(tree, node, opts, cb) {
@@ -952,6 +1249,10 @@ angular.module('ivh.treeview')
       });
 
       return cb(foundNode, foundParents);
+    };
+
+    var isId = function(val) {
+      return ng.isString(val) || ng.isNumber(val);
     };
 
     /**
@@ -995,12 +1296,8 @@ angular.module('ivh.treeview')
             makeSelected.bind(opts) :
             makeDeselected.bind(opts);
 
-          if (opts.disableCheckboxSelectionPropagation) {
-            cb(n);
-          } else {
-            ivhTreeviewBfs(n, opts, cb);
-            ng.forEach(p, validateParent.bind(opts));
-          }
+          ivhTreeviewBfs(n, opts, cb);
+          ng.forEach(p, validateParent.bind(opts));
         }
 
         return proceed;
@@ -1141,7 +1438,9 @@ angular.module('ivh.treeview')
 
       ivhTreeviewBfs(tree, opts, function(node, parents) {
         if(ng.isDefined(node[selectedAttr]) && node[selectedAttr] !== bias) {
-          exports.select(tree, node, opts, !bias);
+          //exports.select(tree, node, opts, !bias);
+          node[selectedAttr] = true;
+          node[indeterminateAttr] = true;
           return false;
         } else {
           node[selectedAttr] = bias;
@@ -1326,13 +1625,8 @@ angular.module('ivh.treeview')
  * @copyright 2014 iVantage Health Analytics, Inc.
  */
 
-angular.module('ivh.treeview').provider('ivhTreeviewOptions', [
-    'ivhTreeviewInterpolateStartSymbol', 'ivhTreeviewInterpolateEndSymbol',
-    function(ivhTreeviewInterpolateStartSymbol, ivhTreeviewInterpolateEndSymbol) {
+angular.module('ivh.treeview').provider('ivhTreeviewOptions', function() {
   'use strict';
-
-  var symbolStart = ivhTreeviewInterpolateStartSymbol
-    , symbolEnd = ivhTreeviewInterpolateEndSymbol;
 
   var options = {
     /**
@@ -1374,13 +1668,21 @@ angular.module('ivh.treeview').provider('ivhTreeviewOptions', [
      */
     useCheckboxes: true,
 
-    /**
-     * If set to true the checkboxes are independent on each other (no state
-     * propagation to children and revalidation of parents' states).
-     * If you set to true, you should set also `validate` property to `false`
-     * and avoid explicit calling of `ivhTreeviewMgr.validate()`.
+     /**
+     * Whether or not to show node count
+     *
+     * If `true` the showing node count is not included in the
+     * directive.
      */
-    disableCheckboxSelectionPropagation: false,
+    hideNodeCount: false,
+
+     /**
+     * Whether or not to select multiple categories
+     *
+     * If `false` the selecting multiple categories is not included in the
+     * directive.
+     */
+    multiselect: false,
 
     /**
      * Whether or not directive should validate treestore on startup
@@ -1388,12 +1690,12 @@ angular.module('ivh.treeview').provider('ivhTreeviewOptions', [
     validate: true,
 
     /**
-     * Collection item attribute to track intermediate states
+     * (internal) Collection item attribute to track intermediate states
      */
     indeterminateAttribute: '__ivhTreeviewIndeterminate',
 
     /**
-     * Collection item attribute to track expanded status
+     * (internal) Collection item attribute to track expanded status
      */
     expandedAttribute: '__ivhTreeviewExpanded',
 
@@ -1421,21 +1723,22 @@ angular.module('ivh.treeview').provider('ivhTreeviewOptions', [
      * Template for tree nodes
      */
     nodeTpl: [
-      '<div class="ivh-treeview-node-content" title="{{trvw.label(node)}}">',
+      '<div class="ivh-treeview-node-content" title="{{trvw.label(node)}}" >',
         '<span ivh-treeview-toggle>',
           '<span class="ivh-treeview-twistie-wrapper" ivh-treeview-twistie></span>',
         '</span>',
         '<span class="ivh-treeview-checkbox-wrapper" ng-if="trvw.useCheckboxes()"',
             'ivh-treeview-checkbox>',
         '</span>',
-        '<span class="ivh-treeview-node-label" ivh-treeview-toggle>',
+        '<span class="ivh-treeview-node-label" ivh-treeview-label id="tree_node_{{trvw.label(node).replace(\' \',\'-\')}}">',
           '{{trvw.label(node)}}',
         '</span>',
+        '<span class="ivh-treeview-node-menu" ivh-treeview-menu style="float:right;" ><md-icon>more_vert</md-icon>',
+        '</span>',
+
         '<div ivh-treeview-children></div>',
       '</div>'
     ].join('\n')
-    .replace(new RegExp('{{', 'g'), symbolStart)
-    .replace(new RegExp('}}', 'g'), symbolEnd)
   };
 
   /**
@@ -1444,6 +1747,7 @@ angular.module('ivh.treeview').provider('ivhTreeviewOptions', [
    * @param {Object} opts options object to override defaults with
    */
   this.set = function(opts) {
+
     angular.extend(options, opts);
   };
 
@@ -1457,4 +1761,4 @@ angular.module('ivh.treeview').provider('ivhTreeviewOptions', [
       return angular.copy(options);
     };
   };
-}]);
+});

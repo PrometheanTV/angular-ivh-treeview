@@ -37,7 +37,7 @@
 - [Tree Traversal](#tree-traversal)
     - [`ivhTreeviewBfs(tree[, opts][, cb])`](#ivhtreeviewbfstree-opts-cb)
 - [Optimizations and Known Limitations](#optimizations-and-known-limitations)
-- [Reporting Issues](#reporting-issues-and-getting-help)
+- [Reporting Issues](#reporting-issues)
 - [Contributing](#contributing)
 - [Release History](#release-history)
 - [License](#license)
@@ -151,7 +151,6 @@ app.config(function(ivhTreeviewOptionsProvider) {
     childrenAttribute: 'children',
     selectedAttribute: 'selected',
     useCheckboxes: true,
-    disableCheckboxSelectionPropagation: false,
     expandToDepth: 0,
     indeterminateAttribute: '__ivhTreeviewIndeterminate',
     expandedAttribute: '__ivhTreeviewExpanded',
@@ -178,7 +177,6 @@ app.controller('MyCtrl', function(ivhTreeviewOptions) {
   // opts.childrenAttribute === 'children'
   // opts.selectedAttribute === 'selected'
   // opts.useCheckboxes === true
-  // opts.disableCheckboxSelectionPropagation === false
   // opts.expandToDepth === 0
   // opts.indeterminateAttribute === '__ivhTreeviewIndeterminate'
   // opts.expandedAttribute === '__ivhTreeviewExpanded'
@@ -577,17 +575,6 @@ supports angular@1.2.x and so does not leverage the native double-colon syntax
 to make one time bindings. By binding once where possible you can trim a large
 number of watches from your trees.
 
-### Known Issues
-
-- Creating multiple treeviews within an ngRepeat loops creates an issue where
-  each treeview accesses the same controller instance after initial load. See
-  issue #113.
-- We use Angular's `filterFilter` for filtering, by default this compares your
-  filter string with at all object attributes. This directive attaches an
-  attribute to your tree nodes to track its selected state (e.g.  `selected:
-  false`). If you want your filter to ignore the selection tracking attribute
-  use an object or function filter. See issue #151.
-
 ## Reporting Issues and Getting Help
 
 When reporting an issue please take a moment to reproduce your setup by
@@ -606,7 +593,7 @@ guidelines](https://github.com/iVantage/Contribution-Guidelines).
 
 ## Release History
 
-- 2015-11-29 v1.0.2 Allow numeric ids as well as string ids
+- 2015-11-29 v1.0.2 Allow numeric ids as well ass tring ids
 - 2015-09-23 v1.0.0 Use expressions rather than callbacks for change/toggle
   handlers, update default template. See MIGRATING doc for breaking changes.
 - 2015-05-06 v0.10.0 Make node templates customizable
