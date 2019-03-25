@@ -356,7 +356,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
       var node = scope.node;
       
       var template =  '<form id="renameForm" style="margin-left: 20px;" ng-submit="rename()">'+
-          '<input type="text" placeholder=" Enter Category Name" ng-model="categoryUpdate" class="enter-category-name"/>'+
+          '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="categoryUpdate" class="enter-category-name"/>'+
           '<p style="margin-left: 0px;" class="new_category_comment">'+
               'Press enter to add the category'+
           '</p>'+
@@ -449,7 +449,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', 
             if (!document.getElementById('addSubcategoryForm')) {
                 var marginLeft = (node.children && node.children.length) > 0 ? -20 : 0;
                 var template = '<form id="addSubcategoryForm" style="margin-left: ' + marginLeft + 'px; margin-top: 10px;" ng-submit="addSubcategory()">' +
-                        '<input type="text" placeholder=" Enter Category Name" ng-model="subCategory" class="enter-category-name"/>' +
+                        '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="subCategory" class="enter-category-name"/>' +
                         '<p style="margin-left: 0px;" class="new_category_comment">' +
                         'Press enter to add the category' +
                         '</p>' +
