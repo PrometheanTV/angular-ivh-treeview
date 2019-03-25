@@ -377,6 +377,8 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
                 renamedValue = node.label;
                 node.label = scope.categoryUpdate;
             }
+
+            if (node.isSelected) delete node.isSelected;
             
             node.renamedValue = renamedValue;
 
