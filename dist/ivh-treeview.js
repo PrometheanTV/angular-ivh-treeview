@@ -366,24 +366,15 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
         '</form>';
 
         scope.rename = function(){
-            node = scope.node;
             
-            var renamedValue;
-
-            if (!node._id) {
-                node = scope.$parent.$parent.$parent.$parent.node;
-                var childrenNode = scope.$parent.node;
-                var id = searchIndexOfObjInArr(node.children, childrenNode.label);
-                renamedValue = node.children[id].label;
-                node.children[id].label = scope.categoryUpdate;
-            } else {
-                renamedValue = node.label;
-                node.label = scope.categoryUpdate;
-            }
-
+            node = getNode();
+            
             if (node.isSelected) delete node.isSelected;
             
-            node.renamedValue = renamedValue;
+            node.renamedValue = node.label;
+            node.label = scope.categoryUpdate;
+
+            scope.error = '';
 
             $http.put('/api/overlaycategories/' + node._id, node).then(successCallback, errorCallback);
 
@@ -392,8 +383,19 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
             }
 
             function errorCallback(error) {
+              node.label = renamedValue;
               scope.error = error.data && error.data.message ? error.data.message : 'Error';
             }
+
+            function getNode() {
+              if (!scope.node._id) {
+                  scope.node = scope.$parent.$parent.$parent.$parent.node;
+                  var childrenNode = scope.$parent.node;
+                  var id = searchIndexOfObjInArr(scope.node.children, childrenNode.label);
+                  return scope.node.children[id];
+              }
+              return scope.node;   
+            }            
         };
 
         element.bind('click', function () {
