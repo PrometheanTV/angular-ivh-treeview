@@ -357,9 +357,12 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
       
       var template =  '<form id="renameForm" style="margin-left: 20px;" ng-submit="rename()">'+
           '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="categoryUpdate" class="enter-category-name"/>'+
-          '<p style="margin-left: 0px;" class="new_category_comment">'+
+          '<p ng-if="!error" style="margin-left: 0px;" class="new_category_comment">'+
               'Press enter to add the category'+
           '</p>'+
+          '<p ng-if="error" style="margin-left: 0px;" class="new_category_comment_error">'+
+              '{{error}}'+
+          '</p>'+          
         '</form>';
 
         scope.rename = function(){
@@ -384,12 +387,12 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
 
             $http.put('/api/overlaycategories/' + node._id, node).then(successCallback, errorCallback);
 
-            function successCallback(data) {
+            function successCallback() {
                 $rootScope.updateCategory(true);
             }
 
-            function errorCallback(data) {
-                //console.log(data);
+            function errorCallback(error) {
+              scope.error = error.data && error.data.message ? error.data.message : 'Error';
             }
         };
 
