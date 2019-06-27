@@ -383,7 +383,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
             }
 
             function errorCallback(error) {
-              node.label = renamedValue;
+              node.label = node.renamedValue;
               scope.error = error.data && error.data.message ? error.data.message : 'Error';
             }
 
