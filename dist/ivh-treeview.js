@@ -88,7 +88,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewCheckbox', [function() {
   return {
     restrict: 'AE',
     require: '^ivhTreeview',
-    template: '<span ivh-treeview-checkbox-helper="node"></span>'
+    template: '<span ivh-treeview-checkbox-helper="node" class="ivh-treeview-checkbox-container"></span>'
   };
 }]);
 
@@ -297,7 +297,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewRemove', ['$http','$rootSco
             node = scope.node;
             var title = 'Are you sure you want to delete the "' + node.label + '" category?';
             var textContent = 'All overlays currently assigned to this category will unassigned';
-                
+
             var confirm = $mdDialog.confirm({
                     onShowing: function afterShowAnimation(el) {
                             $timeout(function () {
@@ -354,23 +354,33 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
     require: '^ivhTreeview',
     link: function(scope, element, attrs, trvw) {
       var node = scope.node;
-      
+      var id = CSS.escape(trvw.getNodeHash(scope.node) + '_' + node.label.replace(' ', '-'));
       var template =  '<form id="renameForm" style="margin-left: 20px;" ng-submit="rename()">'+
-          '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="categoryUpdate" class="enter-category-name"/>'+
+          '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="categoryUpdate" class="enter-category-name" ng-blur="cancelRename(\''+ id +'\')"/>'+
           '<p ng-if="!error" style="margin-left: 0px;" class="new_category_comment">'+
               'Press enter to add the category'+
           '</p>'+
           '<p ng-if="error" style="margin-left: 0px;" class="new_category_comment_error">'+
               '{{error}}'+
-          '</p>'+          
+          '</p>'+
         '</form>';
 
+        scope.cancelRename = function(id){
+          if(document.getElementById('renameForm')) {
+            angular.element(angular.element(document.getElementById('tree_node_' + id))[0].parentElement).children().css({
+              display: "flex"
+            });
+            document.getElementById('renameForm').remove();
+          }
+        }
+
+
         scope.rename = function(){
-            
+
             node = getNode();
-            
+
             if (node.isSelected) delete node.isSelected;
-            
+
             node.renamedValue = node.label;
             node.label = scope.categoryUpdate;
 
@@ -394,13 +404,13 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
                   var id = searchIndexOfObjInArr(scope.node.children, childrenNode.label);
                   return scope.node.children[id];
               }
-              return scope.node;   
-            }            
+              return scope.node;
+            }
         };
 
         element.bind('click', function () {
             scope.categoryUpdate = node.label;
-            var id = CSS.escape(node.label.replace(' ', '-'));
+
             angular.element(angular.element(document.querySelector('.library_categories  #tree_node_'+id))[0].parentElement).children().css({
                 display: "none"
             });
@@ -441,32 +451,36 @@ angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', 
                 };
                 $http.post('/api/overlaycategories/', newCategory)
                 .then(function successCallback() {
-                  $rootScope.updateCategory();
+                  $rootScope.updateCategory(true);
                 }, function errorCallback() {
                   document.getElementById('addSubcategoryForm').remove();
-                }); 
+                });
             }
         };
-        
+        scope.cancel = function(){
+          if(document.getElementById('addSubcategoryForm')) {
+            document.getElementById('addSubcategoryForm').remove();
+            scope.subCategory = '';
+          }
+        }
         var id;
 
         element.bind('click', function () {
             if (!document.getElementById('addSubcategoryForm')) {
-                var marginLeft = (node.children && node.children.length) > 0 ? -20 : 0;
+                var marginLeft = (node.children && node.children.length) > 0 ? 20 : 0;
                 var template = '<form id="addSubcategoryForm" style="margin-left: ' + marginLeft + 'px; margin-top: 10px;" ng-submit="addSubcategory()">' +
-                        '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="subCategory" class="enter-category-name"/>' +
+                        '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="subCategory" class="enter-category-name" ng-blur="cancel()"/>' +
                         '<p style="margin-left: 0px;" class="new_category_comment">' +
                         'Press enter to add the category' +
                         '</p>' +
                         '</form>';
 
                 scope.categoryUpdate = node.label;
-                id = CSS.escape(node.label.replace(' ', '-'));
-                var el = angular.element(angular.element(document.querySelector('.library_categories #tree_node_' + id).parentElement).find('div'));
+                var id = CSS.escape(trvw.getNodeHash(scope.node) + '_' + node.label.replace(' ', '-'));
+                var el = angular.element(angular.element(document.querySelector('.library_categories #tree_node_' + id).parentElement.parentElement));
 
                 angular.element(el[el.length - 1]).append($compile(template)(scope));
 
-                //  console.log('category item menu click',el,node);
                 scope.$apply(function () {
                     trvw.onMenu(node);
                 });
@@ -744,6 +758,10 @@ angular.module('ivh.treeview').directive('ivhTreeview', ['ivhTreeviewMgr', funct
           elementClass += ' ' + node.class;
         }
         return elementClass;
+      };
+
+      trvw.getNodeHash = function(node) {
+        return node.$$hashKey ? node.$$hashKey : ''
       };
 
       /**
@@ -1217,7 +1235,7 @@ angular.module('ivh.treeview')
 //          }
 //        }
 //      });
-//      
+//
       //Fixed aoutoselecting and uselecting of parent category
 //      if(0 === numSelected && 0 === numIndeterminate) {
 //        node[selectedAttr] = false;
