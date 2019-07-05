@@ -367,9 +367,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
 
         scope.cancelRename = function(id){
           if(document.getElementById('renameForm')) {
-            angular.element(angular.element(document.getElementById('tree_node_' + id))[0].parentElement).children().css({
-              display: "flex"
-            });
+            angular.element(angular.element(document.getElementById('tree_node_' + id))[0].parentElement).children().removeAttr('style');
             document.getElementById('renameForm').remove();
           }
         }
@@ -467,7 +465,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', 
 
         element.bind('click', function () {
             if (!document.getElementById('addSubcategoryForm')) {
-                var marginLeft = (node.children && node.children.length) > 0 ? 20 : 0;
+                var marginLeft = 20;
                 var template = '<form id="addSubcategoryForm" style="margin-left: ' + marginLeft + 'px; margin-top: 10px;" ng-submit="addSubcategory()">' +
                         '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="subCategory" class="enter-category-name" ng-blur="cancel()"/>' +
                         '<p style="margin-left: 0px;" class="new_category_comment">' +
