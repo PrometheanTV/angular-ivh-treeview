@@ -450,8 +450,9 @@ angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', 
                 $http.post('/api/overlaycategories/', newCategory)
                 .then(function successCallback() {
                   $rootScope.updateCategory(true);
-                }, function errorCallback() {
-                  document.getElementById('addSubcategoryForm').remove();
+                  scope.error = '';
+                }, function errorCallback(error) {
+                  scope.error = error.data && error.data.message ? error.data.message : 'Error';
                 });
             }
         };
@@ -468,11 +469,14 @@ angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', 
                 var marginLeft = 20;
                 var template = '<form id="addSubcategoryForm" style="margin-left: ' + marginLeft + 'px; margin-top: 10px;" ng-submit="addSubcategory()">' +
                         '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="subCategory" class="enter-category-name" ng-blur="cancel()" maxlength="24"/>' +
-                        '<p style="margin-left: 0px;" class="new_category_comment">' +
+                        '<p ng-hide="error" style="margin-left: 0px;" class="new_category_comment">' +
                         'Press enter to add the category <br> 24 characters max.' +
                         '</p>' +
+                        '<p ng-show="error" style="margin-left: 0px;" class="new_category_comment_error">'+
+                          '{{error}}'+
+                        '</p>'+
                         '</form>';
-
+                scope.error = '';
                 scope.categoryUpdate = node.label;
                 var id = CSS.escape(trvw.getNodeHash(scope.node) + '_' + node.label.replace(' ', '-'));
                 var el = angular.element(angular.element(document.querySelector('.library_categories #tree_node_' + id).parentElement.parentElement));
