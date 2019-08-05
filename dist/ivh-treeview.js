@@ -354,6 +354,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
     require: '^ivhTreeview',
     link: function(scope, element, attrs, trvw) {
       var node = scope.node;
+      var savingInProgress = false;
       var id = CSS.escape(trvw.getNodeHash(scope.node) + '_' + node.label.replace(' ', '-'));
       var template =  '<form id="renameForm" style="margin-left: 20px;" ng-submit="rename()">'+
           '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="categoryUpdate" class="enter-category-name" ng-blur="cancelRename(\''+ id +'\')" maxlength="24"/>'+
@@ -374,6 +375,7 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
 
 
         scope.rename = function(){
+            if (savingInProgress === true) return;
 
             node = getNode();
 
@@ -383,15 +385,17 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
             node.label = scope.categoryUpdate;
 
             scope.error = '';
-
+            savingInProgress = true;
             $http.put('/api/overlaycategories/' + node._id, node).then(successCallback, errorCallback);
 
             function successCallback() {
+              savingInProgress = false;
                 $rootScope.updateCategory(true);
             }
 
             function errorCallback(error) {
               node.label = node.renamedValue;
+              savingInProgress = false;
               scope.error = error.data && error.data.message ? error.data.message : 'Error';
             }
 
@@ -440,9 +444,11 @@ angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', 
     require: '^ivhTreeview',
     link: function(scope, element, attrs, trvw) {
       var node = scope.node;
+      var savingInProgress = false;
 
         scope.addSubcategory = function() {
-            if (typeof scope.subCategory != 'undefined') {
+            if (typeof scope.subCategory != 'undefined' && savingInProgress === false) {
+                savingInProgress = true;
                 var newCategory = {
                   parents: [node.label],
                   label: scope.subCategory
@@ -451,7 +457,10 @@ angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', 
                 .then(function successCallback() {
                   $rootScope.updateCategory(true);
                   scope.error = '';
+                  savingInProgress = false;
+                  scope.subCategory = undefined;
                 }, function errorCallback(error) {
+                  savingInProgress = false;
                   scope.error = error.data && error.data.message ? error.data.message : 'Error';
                 });
             }
