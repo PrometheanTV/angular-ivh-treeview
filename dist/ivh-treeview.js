@@ -358,10 +358,10 @@ angular.module('ivh.treeview').directive('ivhTreeviewRename', ['$http', '$compil
       var id = CSS.escape(trvw.getNodeHash(scope.node) + '_' + node.label.replace(' ', '-'));
       var template =  '<form id="renameForm" style="margin-left: 20px;" ng-submit="rename()">'+
           '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="categoryUpdate" class="enter-category-name" ng-blur="cancelRename(\''+ id +'\')" maxlength="24"/>'+
-          '<p ng-if="!error" style="margin-left: 0px;" class="new_category_comment">'+
+          '<p ng-if="!error" class="new_category_comment">'+
               'Press enter to add the category <br> 24 characters max.'+
           '</p>'+
-          '<p ng-if="error" style="margin-left: 0px;" class="new_category_comment_error">'+
+          '<p ng-if="error" class="new_category_comment_error">'+
               '{{error}}'+
           '</p>'+
         '</form>';
@@ -478,10 +478,10 @@ angular.module('ivh.treeview').directive('ivhTreeviewAddSubcategory', ['$http', 
                 var marginLeft = 20;
                 var template = '<form id="addSubcategoryForm" style="margin-left: ' + marginLeft + 'px; margin-top: 10px;" ng-submit="addSubcategory()">' +
                         '<input type="text" autofocus placeholder=" Enter Category Name" ng-model="subCategory" class="enter-category-name" ng-blur="cancel()" maxlength="24"/>' +
-                        '<p ng-hide="error" style="margin-left: 0px;" class="new_category_comment">' +
+                        '<p ng-hide="error" class="new_category_comment">' +
                         'Press enter to add the category <br> 24 characters max.' +
                         '</p>' +
-                        '<p ng-show="error" style="margin-left: 0px;" class="new_category_comment_error">'+
+                        '<p ng-show="error" class="new_category_comment_error">'+
                           '{{error}}'+
                         '</p>'+
                         '</form>';
