@@ -310,7 +310,6 @@ angular.module('ivh.treeview').directive('ivhTreeviewRemove', ['$http','$rootSco
                                 angular.element($cancelButton).addClass('cancel_category_btn');
                                 angular.element($actionsSection).addClass('grey_confirm_background');
                                 angular.element($dialog).css({display: "flex"});
-                                el.dialog.$element.css({display: "flex"});
                                 if(angular.element(document.querySelector('.confirm_delete_category_dialog p')).text() == ''){
                                     angular.element(document.querySelector('.confirm_delete_category_dialog p')).text(textContent);
                                 }
